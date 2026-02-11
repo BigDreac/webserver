@@ -1,37 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Shared Panel</title>
+    <title>Project Monitor</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
+            margin: 0;
+            font-family: Arial;
+            background: #eef2f7;
             display: flex;
             justify-content: center;
-            margin-top: 40px;
+            padding-top: 50px;
         }
 
-        .container {
-            width: 450px;
+        .panel {
+            width: 600px;
             background: white;
-            border-radius: 6px;
+            border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             padding: 20px;
         }
 
-        #messages {
-            height: 300px;
+        .header {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .feed {
+            height: 350px;
             overflow-y: auto;
             border: 1px solid #ddd;
             padding: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
-        .message {
-            background: #e9ecef;
-            padding: 6px 10px;
+        .entry {
+            background: #f4f6f8;
+            padding: 8px 10px;
+            margin-bottom: 8px;
             border-radius: 4px;
-            margin: 5px 0;
+        }
+
+        .local {
+            background: #d4edda;
         }
 
         .input-area {
@@ -40,13 +51,13 @@
 
         input {
             flex: 1;
-            padding: 8px;
+            padding: 10px;
             border: 1px solid #ccc;
             outline: none;
         }
 
         button {
-            padding: 8px 15px;
+            padding: 10px 20px;
             border: none;
             background: #2c3e50;
             color: white;
@@ -60,12 +71,14 @@
 </head>
 <body>
 
-<div class="container">
-    <div id="messages"></div>
+<div class="panel">
+    <div class="header">Live Activity Board</div>
+
+    <div class="feed" id="feed"></div>
 
     <div class="input-area">
-        <input id="msg" placeholder="Enter text..." />
-        <button onclick="send()">Send</button>
+        <input id="input" placeholder="Add update..." />
+        <button onclick="send()">Submit</button>
     </div>
 </div>
 
@@ -73,22 +86,28 @@
 <script>
     const socket = io();
 
-    function send() {
-        const input = document.getElementById("msg");
-        const text = input.value.trim();
+    function addEntry(text, isLocal = false) {
+        const div = document.createElement("div");
+        div.classList.add("entry");
+        if (isLocal) div.classList.add("local");
+        div.textContent = text;
+        document.getElementById("feed").appendChild(div);
+        div.scrollIntoView();
+    }
 
-        if (text !== "") {
-            socket.emit("chat message", text);
+    function send() {
+        const input = document.getElementById("input");
+        const value = input.value.trim();
+
+        if (value !== "") {
+            addEntry(value, true);      // show once locally
+            socket.emit("update", value);
             input.value = "";
         }
     }
 
-    socket.on("chat message", function(msg) {
-        const div = document.createElement("div");
-        div.classList.add("message");
-        div.textContent = msg;
-        document.getElementById("messages").appendChild(div);
-        div.scrollIntoView();
+    socket.on("update", function(data) {
+        addEntry(data, false);
     });
 </script>
 
