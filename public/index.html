@@ -1,56 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Live Chat Room</title>
+    <title>Data Sync Panel</title>
     <style>
         body {
+            margin: 0;
+            background: #f4f6f8;
             font-family: Arial;
-            background: #f2f2f2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
         }
 
-        .chat-box {
-            width: 400px;
-            height: 500px;
+        .panel {
+            width: 500px;
+            margin: 50px auto;
             background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            height: 500px;
         }
 
-        .messages {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .msg {
-            padding: 8px 12px;
-            margin: 5px 0;
-            border-radius: 15px;
-            max-width: 70%;
-        }
-
-        .me {
-            background: #4CAF50;
+        .header {
+            padding: 15px;
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+            background: #2c3e50;
             color: white;
-            align-self: flex-end;
         }
 
-        .other {
-            background: #ddd;
-            align-self: flex-start;
+        .feed {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        .entry {
+            margin: 6px 0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #e9ecef;
         }
 
         .input-area {
             display: flex;
-            border-top: 1px solid #ccc;
+            border-top: 1px solid #ddd;
         }
 
         input {
@@ -61,22 +55,28 @@
         }
 
         button {
-            padding: 10px;
+            padding: 10px 20px;
             border: none;
-            background: #4CAF50;
+            background: #2c3e50;
             color: white;
             cursor: pointer;
+        }
+
+        button:hover {
+            background: #1a252f;
         }
     </style>
 </head>
 <body>
 
-<div class="chat-box">
-    <div class="messages" id="messages"></div>
+<div class="panel">
+    <div class="header">Live Data Feed</div>
+
+    <div class="feed" id="feed"></div>
 
     <div class="input-area">
-        <input id="msg" placeholder="Type a message..." />
-        <button onclick="send()">Send</button>
+        <input id="input" placeholder="Enter value..." />
+        <button onclick="send()">Submit</button>
     </div>
 </div>
 
@@ -84,27 +84,22 @@
 <script>
     const socket = io();
 
-    function addMessage(text, className) {
-        const div = document.createElement("div");
-        div.classList.add("msg", className);
-        div.textContent = text;
-        document.getElementById("messages").appendChild(div);
-        div.scrollIntoView();
-    }
-
     function send() {
-        const input = document.getElementById("msg");
-        const message = input.value.trim();
+        const input = document.getElementById("input");
+        const value = input.value.trim();
 
-        if (message !== "") {
-            addMessage(message, "me");   // show instantly on your side
-            socket.emit("chat message", message);
+        if (value !== "") {
+            socket.emit("chat message", value);
             input.value = "";
         }
     }
 
     socket.on("chat message", function(msg) {
-        addMessage(msg, "other");
+        const div = document.createElement("div");
+        div.classList.add("entry");
+        div.textContent = msg;
+        document.getElementById("feed").appendChild(div);
+        div.scrollIntoView();
     });
 </script>
 
