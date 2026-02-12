@@ -8,20 +8,16 @@ const io = new Server(server);
 
 let activeUsers = 0;
 const MAX_USERS = 2;
-
-const ADMIN_PASSWORD = "ChangeThisStrongPassword"; // CHANGE THIS
+const ADMIN_PASSWORD = "ChangeThisStrongPassword";
 
 let connectedUsers = {};
 
 app.use(express.static("public"));
-app.use(express.json());
 
-// Serve main site
 app.get("/", (req, res) => {
     res.sendFile(__dirname + "/public/index.html");
 });
 
-// Serve admin page
 app.get("/admin", (req, res) => {
     res.sendFile(__dirname + "/public/admin.html");
 });
@@ -33,42 +29,51 @@ io.on("connection", (socket) => {
         socket.handshake.address;
 
     socket.isAdmin = false;
+    socket.isCountedUser = false;
 
-    // Limit normal users only
-    if (activeUsers >= MAX_USERS) {
-        socket.emit("serverError", {
-            code: 503,
-            message: "SERVER FULL - Only 2 users allowed."
-        });
-        setTimeout(() => socket.disconnect(true), 500);
-        return;
-    }
+    console.log("New connection from:", ip);
 
-    activeUsers++;
-
-    connectedUsers[socket.id] = {
-        ip: ip,
-        socket: socket
-    };
-
-    console.log("User connected:", ip);
-
-    socket.on("update", (data) => {
-        socket.broadcast.emit("update", data);
-    });
-
-    // 🔐 Admin login
+    // 🔐 Admin login event
     socket.on("admin_login", (password) => {
         if (password === ADMIN_PASSWORD) {
             socket.isAdmin = true;
             socket.emit("admin_success");
-            console.log("Admin logged in.");
+            console.log("Admin logged in:", ip);
         } else {
             socket.emit("admin_fail");
         }
     });
 
-    // 🔐 Get users (admin only)
+    // 🚫 Only count normal users toward limit
+    socket.on("register_user", () => {
+
+        if (socket.isAdmin) return;
+
+        if (activeUsers >= MAX_USERS) {
+            socket.emit("serverError", {
+                code: 503,
+                message: "SERVER FULL - Only 2 users allowed."
+            });
+            setTimeout(() => socket.disconnect(true), 500);
+            return;
+        }
+
+        activeUsers++;
+        socket.isCountedUser = true;
+
+        connectedUsers[socket.id] = {
+            ip: ip,
+            socket: socket
+        };
+
+        console.log("User registered:", ip);
+        console.log("Active users:", activeUsers);
+    });
+
+    socket.on("update", (data) => {
+        socket.broadcast.emit("update", data);
+    });
+
     socket.on("admin_get_users", () => {
         if (!socket.isAdmin) return;
 
@@ -80,7 +85,6 @@ io.on("connection", (socket) => {
         socket.emit("admin_user_list", userList);
     });
 
-    // 🔐 Kick user (admin only)
     socket.on("admin_kick_user", (socketId) => {
         if (!socket.isAdmin) return;
 
@@ -97,7 +101,9 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", () => {
-        activeUsers--;
+        if (socket.isCountedUser) {
+            activeUsers--;
+        }
         delete connectedUsers[socket.id];
     });
 

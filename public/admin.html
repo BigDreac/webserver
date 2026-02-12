@@ -1,48 +1,151 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Admin Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Console</title>
+
+<style>
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: Consolas, "Courier New", monospace;
+}
+
+.console {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    padding: 15px;
+}
+
+.output {
+    flex: 1;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.line { margin-bottom: 6px; }
+
+.local { color: #00ff00; }
+.remote { color: #ffffff; }
+.system { color: #ff4444; }
+
+.input-area {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid #222;
+}
+
+.prompt {
+    color: #00ff00;
+    white-space: nowrap;
+    font-size: clamp(14px, 2vw, 16px);
+}
+
+input {
+    flex: 1;
+    background: #000;
+    border: none;
+    color: #fff;
+    font-family: inherit;
+    font-size: clamp(14px, 2vw, 16px);
+    outline: none;
+    padding: 5px;
+}
+
+input:disabled {
+    opacity: 0.5;
+}
+
+.error-screen {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    color: #ff3333;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    font-size: 18px;
+}
+</style>
 </head>
-<body style="background:black;color:white;font-family:monospace">
 
-<h2>Admin Login</h2>
-<input type="password" id="password" placeholder="Enter password">
-<button onclick="login()">Login</button>
+<body>
 
-<h2>Connected Users</h2>
-<ul id="users"></ul>
+<div class="console" id="console">
+    <div class="output" id="output"></div>
+
+    <div class="input-area">
+        <span class="prompt">C:\System&gt;</span>
+        <input id="input" autocomplete="off" />
+    </div>
+</div>
+
+<div class="error-screen" id="errorScreen">
+    <div id="errorCode"></div>
+    <div id="errorMessage"></div>
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
 
-function login() {
-    const pass = document.getElementById("password").value;
-    socket.emit("admin_login", pass);
+// 🔥 Register as normal user (IMPORTANT)
+socket.emit("register_user");
+
+const output = document.getElementById("output");
+const input = document.getElementById("input");
+const consoleDiv = document.getElementById("console");
+const errorScreen = document.getElementById("errorScreen");
+const errorCode = document.getElementById("errorCode");
+const errorMessage = document.getElementById("errorMessage");
+
+function addLine(text, type) {
+    const div = document.createElement("div");
+    div.classList.add("line", type);
+    div.textContent = text;
+    output.appendChild(div);
+    output.scrollTop = output.scrollHeight;
 }
 
-socket.on("admin_success", () => {
-    alert("Admin Logged In");
-    socket.emit("admin_get_users");
-});
-
-socket.on("admin_fail", () => {
-    alert("Wrong password");
-});
-
-socket.on("admin_user_list", (users) => {
-    const list = document.getElementById("users");
-    list.innerHTML = "";
-    users.forEach(user => {
-        const li = document.createElement("li");
-        li.innerHTML = user.ip + " <button onclick='kick(\""+user.socketId+"\")'>Kick</button>";
-        list.appendChild(li);
-    });
-});
-
-function kick(id) {
-    socket.emit("admin_kick_user", id);
+function send() {
+    const value = input.value.trim();
+    if (value !== "") {
+        addLine("C:\\System> " + value, "local");
+        socket.emit("update", value);
+        input.value = "";
+    }
 }
+
+input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        send();
+    }
+});
+
+socket.on("update", function(data) {
+    addLine("Remote> " + data, "remote");
+});
+
+// 🚫 Server full / kicked
+socket.on("serverError", function(err) {
+    consoleDiv.style.display = "none";
+    errorScreen.style.display = "flex";
+    errorCode.innerText = "ERROR " + err.code;
+    errorMessage.innerText = err.message;
+});
+
+window.onload = () => input.focus();
 </script>
 
 </body>
