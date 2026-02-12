@@ -9,7 +9,7 @@ const io = new Server(server);
 let activeUsers = 0;
 const MAX_USERS = 2;
 
-// Serve static files (if you later add CSS/JS files)
+// Serve static files from public folder
 app.use(express.static("public"));
 
 // Serve index.html
@@ -19,22 +19,36 @@ app.get("/", (req, res) => {
 
 io.on("connection", (socket) => {
 
-    // 🚫 Block if limit reached
+    console.log("Incoming connection attempt...");
+
+    // 🚫 If server full
     if (activeUsers >= MAX_USERS) {
-        socket.emit("limitReached", "Server full. Only 2 users allowed at a time.");
-        socket.disconnect(true);
+
+        socket.emit("serverError", {
+            code: 503,
+            message: "SERVER FULL - Only 2 users allowed at a time."
+        });
+
+        console.log("Connection rejected. Server full.");
+
+        // Allow time for error to be shown
+        setTimeout(() => {
+            socket.disconnect(true);
+        }, 500);
+
         return;
     }
 
+    // ✅ Accept user
     activeUsers++;
     console.log("User connected. Active users:", activeUsers);
 
-    // Send updates to others
+    // Broadcast updates
     socket.on("update", (data) => {
         socket.broadcast.emit("update", data);
     });
 
-    // When user leaves
+    // Handle disconnect
     socket.on("disconnect", () => {
         activeUsers--;
         console.log("User disconnected. Active users:", activeUsers);

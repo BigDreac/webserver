@@ -1,101 +1,83 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Console</title>
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+<style>
+* { box-sizing: border-box; }
 
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            background: #000;
-            color: #fff;
-            font-family: Consolas, "Courier New", monospace;
-        }
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: Consolas, "Courier New", monospace;
+}
 
-        .console {
-            display: flex;
-            flex-direction: column;
-            height: 100dvh;
-            padding: 15px;
-        }
+.console {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    padding: 15px;
+}
 
-        .output {
-            flex: 1;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
+.output {
+    flex: 1;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
 
-        .line {
-            margin-bottom: 6px;
-        }
+.line { margin-bottom: 6px; }
 
-        .local {
-            color: #00ff00;
-        }
+.local { color: #00ff00; }
+.remote { color: #ffffff; }
 
-        .remote {
-            color: #ffffff;
-        }
+.input-area {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid #222;
+}
 
-        .system {
-            color: #ff4444;
-        }
+.prompt {
+    color: #00ff00;
+    white-space: nowrap;
+    font-size: clamp(14px, 2vw, 16px);
+}
 
-        .input-area {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding-top: 8px;
-            border-top: 1px solid #222;
-        }
+input {
+    flex: 1;
+    background: #000;
+    border: none;
+    color: #fff;
+    font-family: inherit;
+    font-size: clamp(14px, 2vw, 16px);
+    outline: none;
+    padding: 5px;
+}
 
-        .prompt {
-            color: #00ff00;
-            white-space: nowrap;
-            font-size: clamp(14px, 2vw, 16px);
-        }
-
-        input {
-            flex: 1;
-            background: #000;
-            border: none;
-            color: #fff;
-            font-family: inherit;
-            font-size: clamp(14px, 2vw, 16px);
-            outline: none;
-            padding: 5px;
-        }
-
-        input:disabled {
-            opacity: 0.5;
-        }
-
-        @media (max-width: 600px) {
-            .console {
-                padding: 10px;
-            }
-
-            .prompt {
-                font-size: 14px;
-            }
-
-            input {
-                font-size: 14px;
-            }
-        }
-    </style>
+.error-screen {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    color: #ff3333;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    font-size: 18px;
+}
+</style>
 </head>
 
 <body>
 
-<div class="console">
+<div class="console" id="console">
     <div class="output" id="output"></div>
 
     <div class="input-area">
@@ -104,46 +86,57 @@
     </div>
 </div>
 
+<div class="error-screen" id="errorScreen">
+    <div id="errorCode"></div>
+    <div id="errorMessage"></div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    const socket = io();
-    const output = document.getElementById("output");
-    const input = document.getElementById("input");
+const socket = io();
+const output = document.getElementById("output");
+const input = document.getElementById("input");
+const consoleDiv = document.getElementById("console");
+const errorScreen = document.getElementById("errorScreen");
+const errorCode = document.getElementById("errorCode");
+const errorMessage = document.getElementById("errorMessage");
 
-    function addLine(text, type) {
-        const div = document.createElement("div");
-        div.classList.add("line", type);
-        div.textContent = text;
-        output.appendChild(div);
-        output.scrollTop = output.scrollHeight;
+function addLine(text, type) {
+    const div = document.createElement("div");
+    div.classList.add("line", type);
+    div.textContent = text;
+    output.appendChild(div);
+    output.scrollTop = output.scrollHeight;
+}
+
+function send() {
+    const value = input.value.trim();
+    if (value !== "") {
+        addLine("C:\\System> " + value, "local");
+        socket.emit("update", value);
+        input.value = "";
     }
+}
 
-    function send() {
-        const value = input.value.trim();
-        if (value !== "") {
-            addLine("C:\\System> " + value, "local");
-            socket.emit("update", value);
-            input.value = "";
-        }
+input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        send();
     }
+});
 
-    input.addEventListener("keydown", function(e) {
-        if (e.key === "Enter") {
-            send();
-        }
-    });
+socket.on("update", function(data) {
+    addLine("Remote> " + data, "remote");
+});
 
-    socket.on("update", function(data) {
-        addLine("Remote> " + data, "remote");
-    });
+// 🚫 Proper error display
+socket.on("serverError", function(err) {
+    consoleDiv.style.display = "none";
+    errorScreen.style.display = "flex";
+    errorCode.innerText = "ERROR " + err.code;
+    errorMessage.innerText = err.message;
+});
 
-    // 🚫 When server is full
-    socket.on("limitReached", function(message) {
-        addLine(message, "system");
-        input.disabled = true;
-    });
-
-    window.onload = () => input.focus();
+window.onload = () => input.focus();
 </script>
 
 </body>
