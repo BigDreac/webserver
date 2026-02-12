@@ -1,61 +1,91 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Console</title>
+
     <style>
-        body {
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
             margin: 0;
+            padding: 0;
+            height: 100%;
             background: #000;
-            color: #ffffff;
+            color: #fff;
             font-family: Consolas, "Courier New", monospace;
         }
 
         .console {
-            padding: 20px;
-            height: 100vh;
             display: flex;
             flex-direction: column;
+            height: 100dvh; /* FIX for mobile browser height */
+            padding: 15px;
         }
 
         .output {
             flex: 1;
             overflow-y: auto;
             white-space: pre-wrap;
+            word-break: break-word;
         }
 
         .line {
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
 
         .local {
-            color: #00ff00; /* green */
+            color: #00ff00;
         }
 
         .remote {
-            color: #ffffff; /* white */
+            color: #ffffff;
         }
 
         .input-area {
             display: flex;
             align-items: center;
+            gap: 6px;
+            padding-top: 8px;
+            border-top: 1px solid #222;
         }
 
         .prompt {
             color: #00ff00;
-            margin-right: 5px;
+            white-space: nowrap;
+            font-size: clamp(14px, 2vw, 16px);
         }
 
         input {
             flex: 1;
             background: #000;
             border: none;
-            color: #ffffff;
+            color: #fff;
             font-family: inherit;
-            font-size: 16px;
+            font-size: clamp(14px, 2vw, 16px);
             outline: none;
+            padding: 5px;
+        }
+
+        /* Smaller screens */
+        @media (max-width: 600px) {
+            .console {
+                padding: 10px;
+            }
+
+            .prompt {
+                font-size: 14px;
+            }
+
+            input {
+                font-size: 14px;
+            }
         }
     </style>
 </head>
+
 <body>
 
 <div class="console">
@@ -84,7 +114,7 @@
     function send() {
         const value = input.value.trim();
         if (value !== "") {
-            addLine("C:\\System> " + value, "local"); // show once locally
+            addLine("C:\\System> " + value, "local");
             socket.emit("update", value);
             input.value = "";
         }
@@ -99,6 +129,9 @@
     socket.on("update", function(data) {
         addLine("Remote> " + data, "remote");
     });
+
+    // Auto focus for mobile
+    window.onload = () => input.focus();
 </script>
 
 </body>
