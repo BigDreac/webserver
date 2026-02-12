@@ -26,7 +26,7 @@ io.on("connection", (socket) => {
 
         socket.emit("serverError", {
             code: 503,
-            message: "SERVER FULL - Only 2 users allowed at a time."
+            message: "The server is full(only 2 users allowed at a time).Contect Luv Gautam for more details."
         });
 
         console.log("Connection rejected. Server full.");
