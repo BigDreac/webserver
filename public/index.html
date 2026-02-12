@@ -21,7 +21,7 @@
         .console {
             display: flex;
             flex-direction: column;
-            height: 100dvh; /* FIX for mobile browser height */
+            height: 100dvh;
             padding: 15px;
         }
 
@@ -42,6 +42,10 @@
 
         .remote {
             color: #ffffff;
+        }
+
+        .system {
+            color: #ff4444;
         }
 
         .input-area {
@@ -69,7 +73,10 @@
             padding: 5px;
         }
 
-        /* Smaller screens */
+        input:disabled {
+            opacity: 0.5;
+        }
+
         @media (max-width: 600px) {
             .console {
                 padding: 10px;
@@ -130,7 +137,12 @@
         addLine("Remote> " + data, "remote");
     });
 
-    // Auto focus for mobile
+    // 🚫 When server is full
+    socket.on("limitReached", function(message) {
+        addLine(message, "system");
+        input.disabled = true;
+    });
+
     window.onload = () => input.focus();
 </script>
 
