@@ -30,10 +30,21 @@ html, body {
     word-break: break-word;
 }
 
-.line { margin-bottom: 6px; }
+.line {
+    margin-bottom: 6px;
+}
 
-.local { color: #00ff00; }
-.remote { color: #ffffff; }
+.local {
+    color: #00ff00;
+}
+
+.remote {
+    color: #ffffff;
+}
+
+.system {
+    color: #ff4444;
+}
 
 .input-area {
     display: flex;
@@ -60,6 +71,10 @@ input {
     padding: 5px;
 }
 
+input:disabled {
+    opacity: 0.5;
+}
+
 .error-screen {
     position: fixed;
     inset: 0;
@@ -73,71 +88,249 @@ input {
     font-size: 18px;
 }
 </style>
+
 </head>
 
 <body>
 
-<div class="console" id="console">
+<div class="console">
+
     <div class="output" id="output"></div>
 
     <div class="input-area">
-        <span class="prompt">C:\System&gt;</span>
-        <input id="input" autocomplete="off" />
+
+        <span class="prompt">
+            C:\System&gt;
+        </span>
+
+        <input id="input" autocomplete="off" disabled />
+
     </div>
+
 </div>
+
 
 <div class="error-screen" id="errorScreen">
+
     <div id="errorCode"></div>
+
     <div id="errorMessage"></div>
+
 </div>
 
+
+
 <script src="/socket.io/socket.io.js"></script>
+
 <script>
+
 const socket = io();
+
+
 const output = document.getElementById("output");
 const input = document.getElementById("input");
-const consoleDiv = document.getElementById("console");
+
 const errorScreen = document.getElementById("errorScreen");
 const errorCode = document.getElementById("errorCode");
 const errorMessage = document.getElementById("errorMessage");
 
+
+let authenticated = false;
+
+
+
 function addLine(text, type) {
+
     const div = document.createElement("div");
+
     div.classList.add("line", type);
+
     div.textContent = text;
+
     output.appendChild(div);
+
     output.scrollTop = output.scrollHeight;
+
 }
+
+
 
 function send() {
-    const value = input.value.trim();
-    if (value !== "") {
-        addLine("C:\\System> " + value, "local");
-        socket.emit("update", value);
-        input.value = "";
+
+
+    if (!authenticated) {
+
+        return;
+
     }
+
+
+    const value = input.value.trim();
+
+
+    if(value !== "") {
+
+
+        addLine(
+            "C:\\System> " + value,
+            "local"
+        );
+
+
+        socket.emit(
+            "update",
+            value
+        );
+
+
+        input.value = "";
+
+    }
+
 }
 
-input.addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
+
+
+
+input.addEventListener(
+"keydown",
+function(e){
+
+    if(e.key === "Enter"){
+
         send();
+
     }
+
 });
 
-socket.on("update", function(data) {
-    addLine("Remote> " + data, "remote");
+
+
+
+// Server asks for password
+
+socket.on(
+"passwordRequired",
+function(){
+
+
+    let pass = prompt(
+        "Enter password to continue:"
+    );
+
+
+    socket.emit(
+        "submitPassword",
+        pass
+    );
+
+
 });
 
-// 🚫 Proper error display
-socket.on("serverError", function(err) {
-    consoleDiv.style.display = "none";
+
+
+
+
+// Correct password
+
+socket.on(
+"loginSuccess",
+function(){
+
+
+    authenticated = true;
+
+
+    input.disabled = false;
+
+
+    input.focus();
+
+
+    addLine(
+        "ACCESS GRANTED",
+        "system"
+    );
+
+
+});
+
+
+
+
+
+// Wrong password
+
+socket.on(
+"loginFailed",
+function(){
+
+
+    alert(
+        "Wrong password"
+    );
+
+
+    let pass = prompt(
+        "Enter password to continue:"
+    );
+
+
+    socket.emit(
+        "submitPassword",
+        pass
+    );
+
+
+});
+
+
+
+
+
+// Receive messages
+
+socket.on(
+"update",
+function(data){
+
+
+    addLine(
+        "Remote> " + data,
+        "remote"
+    );
+
+
+});
+
+
+
+
+
+// Server errors
+
+socket.on(
+"serverError",
+function(err){
+
+
     errorScreen.style.display = "flex";
-    errorCode.innerText = "ERROR " + err.code;
-    errorMessage.innerText = err.message;
+
+
+    errorCode.innerText =
+        "ERROR " + err.code;
+
+
+    errorMessage.innerText =
+        err.message;
+
+
 });
 
-window.onload = () => input.focus();
+
+
 </script>
+
 
 </body>
 </html>
